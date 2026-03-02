@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
+import { api } from '../api';
 import './AddFunds.css';
 
 const AddFunds = () => {
@@ -14,15 +15,19 @@ const AddFunds = () => {
   const [depositHistory, setDepositHistory] = useState([]);
   const [historyFilter, setHistoryFilter] = useState('all');
 
-  const paymentMethods = [
-    { id: 'TRON (TRC 20)', name: 'TRON (TRC 20)', icon: 'fab fa-bitcoin', bgClass: 'bg-crypto' },
-    { id: 'BSC (BEP 20)', name: 'BSC (BEP 20)', icon: 'fas fa-university', bgClass: 'bg-bank' }
-  ];
+  const [paymentMethods, setPaymentMethods] = useState([]);
 
   useEffect(() => {
-    // Load deposit history from localStorage
-    const history = JSON.parse(localStorage.getItem('depositHistory') || '[]');
-    setDepositHistory(history);
+    const load = async () => {
+      try {
+        const [mRes, dRes] = await Promise.all([api.paymentMethods(), api.myDeposits()]);
+        const methods = (mRes.data.methods || []).map((m, i) => ({ id: m._id, name: m.name, icon: i % 2 ? 'fas fa-university' : 'fab fa-bitcoin', bgClass: i % 2 ? 'bg-bank' : 'bg-crypto' }));
+        setPaymentMethods(methods);
+        const history = (dRes.data.deposits || []).map((d) => ({ amount: d.amountUSD, method: d.paymentMethodId?.name || '-', status: d.status === 'PENDING' ? 'Pending' : d.status === 'APPROVED' ? 'Completed' : 'Rejected', date: d.createdAt, transactionId: d.transactionId }));
+        setDepositHistory(history);
+      } catch {}
+    };
+    load();
   }, []);
 
   useEffect(() => {
@@ -41,17 +46,7 @@ const AddFunds = () => {
     setSelectedMethod(method);
     setShowQRBlock(true);
     
-    // Save pending deposit to localStorage
-    const newDeposit = {
-      amount: parseFloat(amount),
-      method: method,
-      status: 'Pending',
-      date: new Date().toISOString()
-    };
-    const history = JSON.parse(localStorage.getItem('depositHistory') || '[]');
-    history.push(newDeposit);
-    localStorage.setItem('depositHistory', JSON.stringify(history));
-    setDepositHistory(history);
+
   };
 
   const handleAmountChange = (e) => {
@@ -67,7 +62,7 @@ const AddFunds = () => {
     alert('Reference number copied to clipboard!');
   };
 
-  const handleCompleteDeposit = () => {
+  const handleCompleteDeposit = async () => {
     if (!transactionId.trim()) {
       alert('Please enter your transaction ID');
       return;
@@ -78,44 +73,25 @@ const AddFunds = () => {
       return;
     }
 
-    // Update the most recent pending deposit
-    let history = JSON.parse(localStorage.getItem('depositHistory') || '[]');
-    let matchIndex = -1;
-    
-    for (let i = history.length - 1; i >= 0; i--) {
-      const d = history[i];
-      if (d.status === 'Pending' && d.method === selectedMethod && d.amount === parseFloat(amount)) {
-        matchIndex = i;
-        break;
-      }
+    try {
+      const form = new FormData();
+      form.append('amountUSD', amount);
+      form.append('paymentMethodId', selectedMethod);
+      form.append('transactionId', transactionId.trim());
+      form.append('screenshot', screenshot);
+      await api.createDeposit(form);
+      const dRes = await api.myDeposits();
+      const history = (dRes.data.deposits || []).map((d) => ({ amount: d.amountUSD, method: d.paymentMethodId?.name || '-', status: d.status === 'PENDING' ? 'Pending' : d.status === 'APPROVED' ? 'Completed' : 'Rejected', date: d.createdAt, transactionId: d.transactionId }));
+      setDepositHistory(history);
+      setAmount('');
+      setSelectedMethod('');
+      setShowQRBlock(false);
+      setTransactionId('');
+      setScreenshot(null);
+      alert('Deposit submitted successfully!');
+    } catch (e) {
+      alert(e.message);
     }
-
-    if (matchIndex !== -1) {
-      history[matchIndex].status = 'Completed';
-      history[matchIndex].transactionId = transactionId.trim();
-      history[matchIndex].screenshotName = screenshot.name;
-    } else {
-      history.push({
-        amount: parseFloat(amount),
-        method: selectedMethod,
-        status: 'Completed',
-        date: new Date().toISOString(),
-        transactionId: transactionId.trim(),
-        screenshotName: screenshot.name
-      });
-    }
-
-    localStorage.setItem('depositHistory', JSON.stringify(history));
-    setDepositHistory(history);
-    
-    // Reset form
-    setAmount('');
-    setSelectedMethod('');
-    setShowQRBlock(false);
-    setTransactionId('');
-    setScreenshot(null);
-    
-    alert('Deposit completed successfully!');
   };
 
   const filterHistory = (history) => {

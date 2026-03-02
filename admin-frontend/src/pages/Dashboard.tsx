@@ -1,4 +1,5 @@
 import { motion } from "framer-motion";
+import { useEffect, useState } from "react";
 import {
   Users, TrendingUp, Wallet, ArrowDownCircle, ArrowUpCircle,
   DollarSign, GitBranch, CheckCircle, XCircle, Clock
@@ -8,6 +9,7 @@ import {
   AreaChart, Area, BarChart, Bar, LineChart, Line,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
 } from "recharts";
+import { api } from "@/lib/api";
 
 const investmentData = [
   { name: "Mon", amount: 12400 }, { name: "Tue", amount: 18200 },
@@ -31,7 +33,7 @@ const userGrowthData = [
   { name: "May", users: 620 }, { name: "Jun", users: 890 },
 ];
 
-const recentTransactions = [
+const fallbackTransactions = [
   { id: "TXN001", user: "John Doe", type: "Deposit", amount: "$500", status: "Approved", time: "2 min ago" },
   { id: "TXN002", user: "Jane Smith", type: "Withdrawal", amount: "$1,200", status: "Pending", time: "5 min ago" },
   { id: "TXN003", user: "Mike Johnson", type: "Deposit", amount: "$3,000", status: "Approved", time: "12 min ago" },
@@ -56,21 +58,39 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 };
 
 export default function Dashboard() {
+  const [stats, setStats] = useState<any>({});
+  const [recentTransactions, setRecentTransactions] = useState<any[]>(fallbackTransactions);
+
+  useEffect(() => {
+    api.dashboard().then((r) => {
+      setStats(r.data.stats || {});
+      const tx = (r.data.recentTransactions || []).map((t: any) => ({
+        id: String(t._id).slice(-6),
+        user: t.user?.name || "User",
+        type: t.direction === "CREDIT" ? "Deposit" : "Withdrawal",
+        amount: `$${Number(t.amount || 0).toFixed(2)}`,
+        status: "Approved",
+        time: new Date(t.createdAt).toLocaleString(),
+      }));
+      if (tx.length) setRecentTransactions(tx);
+    }).catch(() => {});
+  }, []);
+
   return (
     <div className="space-y-6">
       {/* Stats Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-        <StatCard title="Total Users" value="12,458" change="+12% this month" changeType="positive" icon={Users} delay={0} />
+        <StatCard title="Total Users" value={String(stats.totalUsers ?? "12,458")} change="+12% this month" changeType="positive" icon={Users} delay={0} />
         <StatCard title="Active Users" value="8,234" change="+8% this week" changeType="positive" icon={TrendingUp} delay={0.05} />
         <StatCard title="Total Investments" value="$2.4M" change="+23% this month" changeType="positive" icon={DollarSign} delay={0.1} />
-        <StatCard title="Pending Deposits" value="$18,420" change="24 pending" changeType="neutral" icon={Clock} delay={0.15} />
+        <StatCard title="Pending Deposits" value={`$${Number(stats.approvedDepositsAmount ?? 18420).toLocaleString()}`} change={`${stats.pendingDeposits ?? 24} pending`} changeType="neutral" icon={Clock} delay={0.15} />
         <StatCard title="Total Profit Paid" value="$342K" change="+15% this month" changeType="positive" icon={Wallet} delay={0.2} />
       </div>
 
       {/* Secondary Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard title="Approved Deposits" value="$1.8M" icon={CheckCircle} delay={0.25} />
-        <StatCard title="Pending Withdrawals" value="$9,840" change="12 pending" icon={ArrowUpCircle} delay={0.3} />
+        <StatCard title="Pending Withdrawals" value={`$${Number(stats.paidWithdrawalsAmount ?? 9840).toLocaleString()}`} change={`${stats.pendingWithdrawals ?? 12} pending`} icon={ArrowUpCircle} delay={0.3} />
         <StatCard title="Approved Withdrawals" value="$890K" icon={ArrowDownCircle} delay={0.35} />
         <StatCard title="Referral Commissions" value="$45,200" change="+18% this month" changeType="positive" icon={GitBranch} delay={0.4} />
       </div>

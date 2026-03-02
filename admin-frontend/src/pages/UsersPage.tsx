@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { Search, MoreVertical, Eye, Ban, Trash2, Edit, UserCheck, UserX, Plus, DollarSign, MinusCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -11,6 +11,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "@/hooks/use-toast";
+import { api } from "@/lib/api";
 
 interface User {
   id: string;
@@ -36,6 +37,21 @@ const initialUsers: User[] = [
 
 export default function UsersPage() {
   const [users, setUsers] = useState<User[]>(initialUsers);
+
+  const loadUsers = async () => {
+    try {
+      const res = await api.users();
+      const mapped = (res.data.users || []).map((u: any) => ({
+        id: u._id, name: u.name, email: u.email, phone: u.phone || "-", balance: Number(u.walletBalance || 0),
+        totalDeposit: Number(u.totalInvested || 0), totalWithdraw: 0, totalProfit: Number(u.totalEarnings || 0),
+        referredBy: "-", joinDate: new Date(u.createdAt).toISOString().slice(0,10),
+        status: u.isBlocked ? "Suspended" : "Active",
+      }));
+      setUsers(mapped);
+    } catch {}
+  };
+
+  useEffect(() => { loadUsers(); }, []);
   const [search, setSearch] = useState("");
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [showDetail, setShowDetail] = useState(false);
@@ -76,7 +92,7 @@ export default function UsersPage() {
     toast({ title: "Status Changed", description: `User status changed to ${status}` });
   };
 
-  const handleBalance = () => {
+  const handleBalance = async () => {
     if (!balanceDialog || !balanceAmount) return;
     const amount = Number(balanceAmount);
     if (isNaN(amount) || amount <= 0) { toast({ title: "Error", description: "Enter a valid amount", variant: "destructive" }); return; }

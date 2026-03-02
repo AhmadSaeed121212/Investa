@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { Plus, Edit, Trash2, ToggleLeft, ToggleRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -7,9 +7,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "@/hooks/use-toast";
+import { api } from "@/lib/api";
 
 interface Plan {
-  id: number;
+  id: string | number;
   name: string;
   min: number;
   max: number;
@@ -19,7 +20,7 @@ interface Plan {
   active: boolean;
 }
 
-const initialPlans: Plan[] = [
+const initialPlans: Plan[] = [ // fallback before API load
   { id: 1, name: "Starter Plan", min: 100, max: 999, dailyProfit: 2.5, duration: 30, capitalReturn: true, active: true },
   { id: 2, name: "Silver Plan", min: 1000, max: 4999, dailyProfit: 3.0, duration: 60, capitalReturn: true, active: true },
   { id: 3, name: "Gold Plan", min: 5000, max: 19999, dailyProfit: 3.5, duration: 90, capitalReturn: true, active: true },
@@ -31,10 +32,20 @@ const emptyPlan: Omit<Plan, "id"> = { name: "", min: 0, max: 0, dailyProfit: 0, 
 
 export default function PlansPage() {
   const [plans, setPlans] = useState<Plan[]>(initialPlans);
+
+  const loadPlans = async () => {
+    try {
+      const res = await api.plans();
+      const mapped = (res.data.plans || []).map((p: any) => ({ id: p._id, name: p.name, min: p.min, max: p.max, dailyProfit: p.dailyProfit, duration: p.duration, capitalReturn: p.capitalReturn, active: p.active }));
+      setPlans(mapped);
+    } catch {}
+  };
+
+  useEffect(() => { loadPlans(); }, []);
   const [showDialog, setShowDialog] = useState(false);
   const [editingPlan, setEditingPlan] = useState<Plan | null>(null);
   const [form, setForm] = useState<Omit<Plan, "id">>(emptyPlan);
-  const [deleteConfirm, setDeleteConfirm] = useState<number | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<string | number | null>(null);
 
   const openCreate = () => {
     setEditingPlan(null);
@@ -48,32 +59,38 @@ export default function PlansPage() {
     setShowDialog(true);
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!form.name.trim()) {
       toast({ title: "Error", description: "Plan name is required", variant: "destructive" });
       return;
     }
-    if (editingPlan) {
-      setPlans(prev => prev.map(p => p.id === editingPlan.id ? { ...p, ...form } : p));
-      toast({ title: "Success", description: `"${form.name}" updated successfully` });
-    } else {
-      const newId = Math.max(...plans.map(p => p.id), 0) + 1;
-      setPlans(prev => [...prev, { id: newId, ...form }]);
-      toast({ title: "Success", description: `"${form.name}" created successfully` });
+    try {
+      if (editingPlan) {
+        await api.updatePlan(String(editingPlan.id), form);
+        toast({ title: "Success", description: `"${form.name}" updated successfully` });
+      } else {
+        await api.createPlan(form);
+        toast({ title: "Success", description: `"${form.name}" created successfully` });
+      }
+      await loadPlans();
+      setShowDialog(false);
+    } catch (e: any) {
+      toast({ title: "Error", description: e.message || "Failed", variant: "destructive" });
     }
-    setShowDialog(false);
   };
 
-  const handleDelete = (id: number) => {
+  const handleDelete = async (id: string | number) => {
     const plan = plans.find(p => p.id === id);
-    setPlans(prev => prev.filter(p => p.id !== id));
+    await api.deletePlan(String(id));
+    await loadPlans();
     setDeleteConfirm(null);
     toast({ title: "Deleted", description: `"${plan?.name}" has been deleted` });
   };
 
-  const togglePlan = (id: number) => {
-    setPlans(prev => prev.map(p => p.id === id ? { ...p, active: !p.active } : p));
+  const togglePlan = async (id: string | number) => {
     const plan = plans.find(p => p.id === id);
+    await api.togglePlan(String(id));
+    await loadPlans();
     toast({ title: plan?.active ? "Deactivated" : "Activated", description: `"${plan?.name}" is now ${plan?.active ? "inactive" : "active"}` });
   };
 

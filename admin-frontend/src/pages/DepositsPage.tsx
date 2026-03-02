@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { CheckCircle, XCircle, Clock, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -7,6 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { toast } from "@/hooks/use-toast";
+import { api } from "@/lib/api";
 
 interface Deposit {
   id: string;
@@ -29,6 +30,26 @@ const initialDeposits: Deposit[] = [
 
 export default function DepositsPage() {
   const [deposits, setDeposits] = useState<Deposit[]>(initialDeposits);
+
+  const loadDeposits = async () => {
+    try {
+      const res = await api.pendingDeposits();
+      const mapped = (res.data.deposits || []).map((d: any) => ({
+        id: d._id,
+        user: d.user?.name || "Unknown",
+        email: d.user?.email || "-",
+        amount: Number(d.amountUSD || 0),
+        method: d.paymentMethodId?.name || "-",
+        txId: d.transactionId,
+        screenshot: d.screenshot,
+        status: d.status === "PENDING" ? "Pending" : d.status === "APPROVED" ? "Approved" : "Rejected",
+        date: new Date(d.createdAt).toLocaleString(),
+      }));
+      setDeposits(mapped);
+    } catch {}
+  };
+
+  useEffect(() => { loadDeposits(); }, []);
   const [selectedDeposit, setSelectedDeposit] = useState<Deposit | null>(null);
   const [rejectDialog, setRejectDialog] = useState<string | null>(null);
   const [rejectNote, setRejectNote] = useState("");

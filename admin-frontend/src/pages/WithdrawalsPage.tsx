@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { CheckCircle, XCircle, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -7,6 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { toast } from "@/hooks/use-toast";
+import { api } from "@/lib/api";
 
 interface Withdrawal {
   id: string;
@@ -28,6 +29,19 @@ const initialWithdrawals: Withdrawal[] = [
 
 export default function WithdrawalsPage() {
   const [withdrawals, setWithdrawals] = useState<Withdrawal[]>(initialWithdrawals);
+
+  const loadWithdrawals = async () => {
+    try {
+      const res = await api.pendingWithdrawals();
+      const mapped = (res.data.withdrawals || []).map((w: any) => ({
+        id: w._id, user: w.user?.name || "Unknown", email: w.user?.email || "-", amount: Number(w.amountUSD || 0),
+        method: w.paymentMethodId?.name || "-", wallet: w.withdrawAddress, status: w.status === "PENDING" ? "Pending" : w.status === "PAID" ? "Approved" : "Rejected", date: new Date(w.createdAt).toLocaleString()
+      }));
+      setWithdrawals(mapped);
+    } catch {}
+  };
+
+  useEffect(() => { loadWithdrawals(); }, []);
   const [selected, setSelected] = useState<Withdrawal | null>(null);
   const [rejectDialog, setRejectDialog] = useState<string | null>(null);
   const [rejectNote, setRejectNote] = useState("");

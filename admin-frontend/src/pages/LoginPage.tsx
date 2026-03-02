@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
+import { api } from "@/lib/api";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -62,20 +63,11 @@ export default function LoginPage() {
     setIsLoading(true);
     
     try {
-      // Simulate API call with proper error handling
-      await new Promise((resolve, reject) => {
-        setTimeout(() => {
-          // Dummy credentials check
-          if (email === "admin@investmaster.com" && password === "admin123") {
-            resolve(true);
-          } else {
-            reject(new Error("Invalid credentials"));
-          }
-        }, 1500);
-      });
-      
-      // Successful login
-      login();
+      const res = await api.login(email, password);
+      if (res.data?.user?.role !== "admin") {
+        throw new Error("Admin account required");
+      }
+      login(res.data.token);
       toast.success("Login successful! Welcome to InvestMaster Admin Dashboard");
       navigate("/");
       
