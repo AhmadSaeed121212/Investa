@@ -108,67 +108,17 @@ export default function WithdrawalsPage() {
   );
 
   return (
-    <div className="space-y-4 md:space-y-6">
-      <div>
-        <h2 className="text-lg md:text-xl font-bold text-foreground">Withdrawal Management</h2>
-        <p className="text-xs md:text-sm text-muted-foreground">Process withdrawal requests</p>
-      </div>
-
-      <Tabs defaultValue="all" className="w-full">
-        <TabsList className="bg-secondary border border-border w-full sm:w-auto flex">
-          <TabsTrigger value="all" className="flex-1 sm:flex-initial">All</TabsTrigger>
-          <TabsTrigger value="pending" className="flex-1 sm:flex-initial">Pending</TabsTrigger>
-          <TabsTrigger value="approved" className="flex-1 sm:flex-initial">Approved</TabsTrigger>
-          <TabsTrigger value="rejected" className="flex-1 sm:flex-initial">Rejected</TabsTrigger>
-        </TabsList>
-        <TabsContent value="all"><div className="glass-card overflow-hidden">{renderTable(withdrawals)}</div></TabsContent>
-        <TabsContent value="pending"><div className="glass-card overflow-hidden">{renderTable(withdrawals.filter(w => w.status === "Pending"))}</div></TabsContent>
-        <TabsContent value="approved"><div className="glass-card overflow-hidden">{renderTable(withdrawals.filter(w => w.status === "Approved"))}</div></TabsContent>
-        <TabsContent value="rejected"><div className="glass-card overflow-hidden">{renderTable(withdrawals.filter(w => w.status === "Rejected"))}</div></TabsContent>
-      </Tabs>
-
-      {/* Detail */}
-      <Dialog open={!!selected} onOpenChange={() => setSelected(null)}>
-        <DialogContent className="bg-card border-border max-w-[95vw] sm:max-w-md">
-          <DialogHeader><DialogTitle className="text-foreground">Withdrawal Details</DialogTitle></DialogHeader>
-          {selected && (
-            <div className="space-y-3">
-              {[
-                { label: "ID", value: selected.id },
-                { label: "User", value: selected.user },
-                { label: "Amount", value: `$${selected.amount.toLocaleString()}` },
-                { label: "Method", value: selected.method },
-                { label: "Wallet", value: selected.wallet },
-                { label: "Date", value: selected.date },
-                { label: "Status", value: selected.status },
-              ].map(item => (
-                <div key={item.label} className="flex justify-between py-2 border-b border-border/50">
-                  <span className="text-sm text-muted-foreground">{item.label}</span>
-                  <span className="text-sm font-medium text-foreground">{item.value}</span>
-                </div>
-              ))}
-              {selected.status === "Pending" && (
-                <div className="flex flex-col sm:flex-row gap-2 pt-2">
-                  <Button className="flex-1 gap-2" onClick={() => handleApprove(selected.id)}><CheckCircle className="w-4 h-4" /> Approve</Button>
-                  <Button variant="destructive" className="flex-1 gap-2" onClick={() => { setSelected(null); setRejectDialog(selected.id); }}><XCircle className="w-4 h-4" /> Reject</Button>
-                </div>
-              )}
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
-
-      {/* Reject */}
-      <Dialog open={rejectDialog !== null} onOpenChange={() => { setRejectDialog(null); setRejectNote(""); }}>
-        <DialogContent className="bg-card border-border max-w-[95vw] sm:max-w-sm">
-          <DialogHeader><DialogTitle className="text-foreground">Reject Withdrawal</DialogTitle></DialogHeader>
-          <div><Label>Note (optional)</Label><Textarea placeholder="Reason..." value={rejectNote} onChange={e => setRejectNote(e.target.value)} className="mt-1" /></div>
-          <DialogFooter className="flex-col sm:flex-row gap-2">
-            <Button variant="outline" onClick={() => { setRejectDialog(null); setRejectNote(""); }} className="w-full sm:w-auto">Cancel</Button>
-            <Button variant="destructive" onClick={() => rejectDialog && handleReject(rejectDialog)} className="w-full sm:w-auto">Reject</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+    <div className="space-y-4">
+      <h1 className="text-2xl font-bold">Pending Withdrawals</h1>
+      {items.map((w) => (
+        <div key={w._id} className="glass-card p-3 flex justify-between items-center">
+          <div>{w.user?.name} - ${w.amountUSD} - {w.withdrawAddress}</div>
+          <div className="space-x-2">
+            <Button onClick={async()=>{await api.reviewWithdrawal(w._id,'APPROVE','',''); await load();}}>Approve</Button>
+            <Button variant="destructive" onClick={async()=>{await api.reviewWithdrawal(w._id,'DENY','Denied by admin',''); await load();}}>Deny</Button>
+          </div>
+        </div>
+      ))}
     </div>
   );
 }

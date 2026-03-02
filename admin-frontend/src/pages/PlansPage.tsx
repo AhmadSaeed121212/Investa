@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { Plus, Edit, Trash2, ToggleLeft, ToggleRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
@@ -47,11 +46,8 @@ export default function PlansPage() {
   const [form, setForm] = useState<Omit<Plan, "id">>(emptyPlan);
   const [deleteConfirm, setDeleteConfirm] = useState<string | number | null>(null);
 
-  const openCreate = () => {
-    setEditingPlan(null);
-    setForm(emptyPlan);
-    setShowDialog(true);
-  };
+  const load = () => api.plans().then((r) => setPlans(r.data.plans || []));
+  useEffect(() => { load().catch(console.error); }, []);
 
   const openEdit = (plan: Plan) => {
     setEditingPlan(plan);
@@ -95,97 +91,27 @@ export default function PlansPage() {
   };
 
   return (
-    <div className="space-y-4 md:space-y-6">
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-        <div>
-          <h2 className="text-lg md:text-xl font-bold text-foreground">Investment Plans</h2>
-          <p className="text-xs md:text-sm text-muted-foreground">Create and manage investment plans</p>
-        </div>
-        <Button onClick={openCreate} className="gap-2 w-full sm:w-auto">
-          <Plus className="w-4 h-4" /> Create Plan
-        </Button>
+    <div className="space-y-4">
+      <h1 className="text-2xl font-bold">Plans</h1>
+      <div className="grid grid-cols-2 gap-2 max-w-2xl">
+        <Input placeholder="Name" value={form.name} onChange={(e)=>setForm({...form,name:e.target.value})} />
+        <Input placeholder="Min" type="number" value={form.min} onChange={(e)=>setForm({...form,min:Number(e.target.value)})} />
+        <Input placeholder="Max" type="number" value={form.max} onChange={(e)=>setForm({...form,max:Number(e.target.value)})} />
+        <Input placeholder="Daily Profit" type="number" value={form.dailyProfit} onChange={(e)=>setForm({...form,dailyProfit:Number(e.target.value)})} />
+        <Input placeholder="Duration" type="number" value={form.duration} onChange={(e)=>setForm({...form,duration:Number(e.target.value)})} />
+        <Button onClick={create}>Create Plan</Button>
       </div>
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3 md:gap-4">
-        {plans.map((plan, i) => (
-          <motion.div
-            key={plan.id}
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: i * 0.05 }}
-            className={`glass-card p-4 md:p-5 relative overflow-hidden ${!plan.active ? "opacity-60" : ""}`}
-          >
-            {plan.active && <div className="absolute top-0 right-0 w-20 h-20 bg-primary/5 rounded-bl-full" />}
-            <div className="flex items-start justify-between mb-3 md:mb-4">
-              <div>
-                <h3 className="text-foreground font-semibold text-base md:text-lg">{plan.name}</h3>
-                <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${plan.active ? "bg-success/10 text-success" : "bg-muted text-muted-foreground"}`}>
-                  {plan.active ? "Active" : "Inactive"}
-                </span>
-              </div>
-              <div className="flex gap-0.5">
-                <button onClick={() => openEdit(plan)} className="p-1.5 hover:bg-secondary rounded-lg transition-colors">
-                  <Edit className="w-4 h-4 text-muted-foreground" />
-                </button>
-                <button onClick={() => togglePlan(plan.id)} className="p-1.5 hover:bg-secondary rounded-lg transition-colors">
-                  {plan.active ? <ToggleRight className="w-4 h-4 text-success" /> : <ToggleLeft className="w-4 h-4 text-muted-foreground" />}
-                </button>
-                <button onClick={() => setDeleteConfirm(plan.id)} className="p-1.5 hover:bg-destructive/10 rounded-lg transition-colors">
-                  <Trash2 className="w-4 h-4 text-destructive" />
-                </button>
-              </div>
-            </div>
-            <div className="space-y-2 md:space-y-3">
-              <div className="flex justify-between text-sm"><span className="text-muted-foreground">Investment Range</span><span className="text-foreground font-medium">${plan.min.toLocaleString()} - ${plan.max.toLocaleString()}</span></div>
-              <div className="flex justify-between text-sm"><span className="text-muted-foreground">Daily Profit</span><span className="text-primary font-bold">{plan.dailyProfit}%</span></div>
-              <div className="flex justify-between text-sm"><span className="text-muted-foreground">Duration</span><span className="text-foreground font-medium">{plan.duration} Days</span></div>
-              <div className="flex justify-between text-sm"><span className="text-muted-foreground">Capital Return</span><span className={`font-medium ${plan.capitalReturn ? "text-success" : "text-destructive"}`}>{plan.capitalReturn ? "Yes" : "No"}</span></div>
-            </div>
-          </motion.div>
-        ))}
-      </div>
-
-      {/* Create/Edit Dialog */}
-      <Dialog open={showDialog} onOpenChange={setShowDialog}>
-        <DialogContent className="bg-card border-border max-w-[95vw] sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="text-foreground">{editingPlan ? "Edit Plan" : "Create Investment Plan"}</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div><Label>Plan Name</Label><Input placeholder="e.g. Gold Plan" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} className="mt-1" /></div>
-            <div className="grid grid-cols-2 gap-3">
-              <div><Label>Min Investment ($)</Label><Input type="number" value={form.min || ""} onChange={e => setForm({ ...form, min: Number(e.target.value) })} className="mt-1" /></div>
-              <div><Label>Max Investment ($)</Label><Input type="number" value={form.max || ""} onChange={e => setForm({ ...form, max: Number(e.target.value) })} className="mt-1" /></div>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div><Label>Daily Profit (%)</Label><Input type="number" step="0.1" value={form.dailyProfit || ""} onChange={e => setForm({ ...form, dailyProfit: Number(e.target.value) })} className="mt-1" /></div>
-              <div><Label>Duration (Days)</Label><Input type="number" value={form.duration || ""} onChange={e => setForm({ ...form, duration: Number(e.target.value) })} className="mt-1" /></div>
-            </div>
-            <div className="flex items-center justify-between">
-              <Label>Capital Return</Label>
-              <Switch checked={form.capitalReturn} onCheckedChange={v => setForm({ ...form, capitalReturn: v })} />
+      <div className="space-y-2">
+        {plans.map((p) => (
+          <div key={p._id} className="glass-card p-3 flex justify-between items-center">
+            <div>{p.name} (${p.min}-${p.max}) {p.dailyProfit}%/{p.duration}d - {p.active ? 'Active' : 'Inactive'}</div>
+            <div className="space-x-2">
+              <Button variant="outline" onClick={async()=>{await api.togglePlan(p._id); await load();}}>Toggle</Button>
+              <Button variant="destructive" onClick={async()=>{await api.deletePlan(p._id); await load();}}>Delete</Button>
             </div>
           </div>
-          <DialogFooter className="flex-col sm:flex-row gap-2">
-            <Button variant="outline" onClick={() => setShowDialog(false)} className="w-full sm:w-auto">Cancel</Button>
-            <Button onClick={handleSave} className="w-full sm:w-auto">{editingPlan ? "Update Plan" : "Create Plan"}</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Delete Confirm */}
-      <Dialog open={deleteConfirm !== null} onOpenChange={() => setDeleteConfirm(null)}>
-        <DialogContent className="bg-card border-border max-w-[95vw] sm:max-w-sm">
-          <DialogHeader>
-            <DialogTitle className="text-foreground">Confirm Delete</DialogTitle>
-          </DialogHeader>
-          <p className="text-sm text-muted-foreground">Are you sure you want to delete "{plans.find(p => p.id === deleteConfirm)?.name}"? This action cannot be undone.</p>
-          <DialogFooter className="flex-col sm:flex-row gap-2">
-            <Button variant="outline" onClick={() => setDeleteConfirm(null)} className="w-full sm:w-auto">Cancel</Button>
-            <Button variant="destructive" onClick={() => deleteConfirm && handleDelete(deleteConfirm)} className="w-full sm:w-auto">Delete</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        ))}
+      </div>
     </div>
   );
 }

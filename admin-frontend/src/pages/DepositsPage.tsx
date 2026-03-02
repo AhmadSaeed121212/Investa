@@ -127,83 +127,17 @@ export default function DepositsPage() {
   );
 
   return (
-    <div className="space-y-4 md:space-y-6">
-      <div>
-        <h2 className="text-lg md:text-xl font-bold text-foreground">Deposit Management</h2>
-        <p className="text-xs md:text-sm text-muted-foreground">Review and manage all deposits</p>
-      </div>
-
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 md:gap-4">
-        {[
-          { label: "Pending", count: counts.pending, amount: `$${counts.pendingAmount.toLocaleString()}`, color: "text-warning" },
-          { label: "Approved", count: counts.approved, amount: `$${counts.approvedAmount.toLocaleString()}`, color: "text-success" },
-          { label: "Rejected", count: counts.rejected, amount: `$${counts.rejectedAmount.toLocaleString()}`, color: "text-destructive" },
-        ].map(s => (
-          <div key={s.label} className="glass-card p-3 md:p-4 flex items-center justify-between">
-            <div>
-              <p className="text-xs md:text-sm text-muted-foreground">{s.label}</p>
-              <p className={`text-xl md:text-2xl font-bold ${s.color}`}>{s.count}</p>
-            </div>
-            <p className="text-base md:text-lg font-semibold text-foreground">{s.amount}</p>
+    <div className="space-y-4">
+      <h1 className="text-2xl font-bold">Pending Deposits</h1>
+      {deposits.map((d) => (
+        <div key={d._id} className="glass-card p-3 flex justify-between items-center">
+          <div>{d.user?.name} - ${d.amountUSD} - {d.transactionId}</div>
+          <div className="space-x-2">
+            <Button onClick={async()=>{await api.reviewDeposit(d._id,'APPROVE'); await load();}}>Approve</Button>
+            <Button variant="destructive" onClick={async()=>{await api.reviewDeposit(d._id,'REJECT','Rejected by admin'); await load();}}>Reject</Button>
           </div>
-        ))}
-      </div>
-
-      <Tabs defaultValue="all" className="w-full">
-        <TabsList className="bg-secondary border border-border w-full sm:w-auto flex">
-          <TabsTrigger value="all" className="flex-1 sm:flex-initial">All</TabsTrigger>
-          <TabsTrigger value="pending" className="flex-1 sm:flex-initial">Pending</TabsTrigger>
-          <TabsTrigger value="approved" className="flex-1 sm:flex-initial">Approved</TabsTrigger>
-          <TabsTrigger value="rejected" className="flex-1 sm:flex-initial">Rejected</TabsTrigger>
-        </TabsList>
-        <TabsContent value="all"><div className="glass-card overflow-hidden">{renderTable(deposits)}</div></TabsContent>
-        <TabsContent value="pending"><div className="glass-card overflow-hidden">{renderTable(deposits.filter(d => d.status === "Pending"))}</div></TabsContent>
-        <TabsContent value="approved"><div className="glass-card overflow-hidden">{renderTable(deposits.filter(d => d.status === "Approved"))}</div></TabsContent>
-        <TabsContent value="rejected"><div className="glass-card overflow-hidden">{renderTable(deposits.filter(d => d.status === "Rejected"))}</div></TabsContent>
-      </Tabs>
-
-      {/* Detail */}
-      <Dialog open={!!selectedDeposit} onOpenChange={() => setSelectedDeposit(null)}>
-        <DialogContent className="bg-card border-border max-w-[95vw] sm:max-w-md">
-          <DialogHeader><DialogTitle className="text-foreground">Deposit Details</DialogTitle></DialogHeader>
-          {selectedDeposit && (
-            <div className="space-y-3">
-              {[
-                { label: "Deposit ID", value: selectedDeposit.id },
-                { label: "User", value: selectedDeposit.user },
-                { label: "Amount", value: `$${selectedDeposit.amount.toLocaleString()}` },
-                { label: "Method", value: selectedDeposit.method },
-                { label: "Transaction ID", value: selectedDeposit.txId },
-                { label: "Date", value: selectedDeposit.date },
-                { label: "Status", value: selectedDeposit.status },
-              ].map(item => (
-                <div key={item.label} className="flex justify-between py-2 border-b border-border/50">
-                  <span className="text-sm text-muted-foreground">{item.label}</span>
-                  <span className="text-sm font-medium text-foreground">{item.value}</span>
-                </div>
-              ))}
-              {selectedDeposit.status === "Pending" && (
-                <div className="flex flex-col sm:flex-row gap-2 pt-2">
-                  <Button className="flex-1 gap-2" onClick={() => handleApprove(selectedDeposit.id)}><CheckCircle className="w-4 h-4" /> Approve</Button>
-                  <Button variant="destructive" className="flex-1 gap-2" onClick={() => { setSelectedDeposit(null); setRejectDialog(selectedDeposit.id); }}><XCircle className="w-4 h-4" /> Reject</Button>
-                </div>
-              )}
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
-
-      {/* Reject with note */}
-      <Dialog open={rejectDialog !== null} onOpenChange={() => { setRejectDialog(null); setRejectNote(""); }}>
-        <DialogContent className="bg-card border-border max-w-[95vw] sm:max-w-sm">
-          <DialogHeader><DialogTitle className="text-foreground">Reject Deposit</DialogTitle></DialogHeader>
-          <div><Label>Rejection Note (optional)</Label><Textarea placeholder="Reason for rejection..." value={rejectNote} onChange={e => setRejectNote(e.target.value)} className="mt-1" /></div>
-          <DialogFooter className="flex-col sm:flex-row gap-2">
-            <Button variant="outline" onClick={() => { setRejectDialog(null); setRejectNote(""); }} className="w-full sm:w-auto">Cancel</Button>
-            <Button variant="destructive" onClick={() => rejectDialog && handleReject(rejectDialog)} className="w-full sm:w-auto">Reject</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        </div>
+      ))}
     </div>
   );
 }

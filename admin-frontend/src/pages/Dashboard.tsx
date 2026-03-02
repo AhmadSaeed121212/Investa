@@ -95,98 +95,23 @@ export default function Dashboard() {
         <StatCard title="Referral Commissions" value="$45,200" change="+18% this month" changeType="positive" icon={GitBranch} delay={0.4} />
       </div>
 
-      {/* Charts */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="glass-card p-5">
-          <h3 className="text-sm font-semibold text-foreground mb-4">Active Investments (Weekly)</h3>
-          <ResponsiveContainer width="100%" height={260}>
-            <AreaChart data={investmentData}>
-              <defs>
-                <linearGradient id="investGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="hsl(174, 72%, 50%)" stopOpacity={0.3} />
-                  <stop offset="95%" stopColor="hsl(174, 72%, 50%)" stopOpacity={0} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="hsl(222, 30%, 18%)" />
-              <XAxis dataKey="name" stroke="hsl(215, 20%, 55%)" fontSize={12} />
-              <YAxis stroke="hsl(215, 20%, 55%)" fontSize={12} />
-              <Tooltip content={<CustomTooltip />} />
-              <Area type="monotone" dataKey="amount" stroke="hsl(174, 72%, 50%)" fill="url(#investGrad)" strokeWidth={2} />
-            </AreaChart>
-          </ResponsiveContainer>
-        </motion.div>
+  const s = data.stats || {};
 
-        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35 }} className="glass-card p-5">
-          <h3 className="text-sm font-semibold text-foreground mb-4">Deposits vs Withdrawals</h3>
-          <ResponsiveContainer width="100%" height={260}>
-            <BarChart data={depositWithdrawData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="hsl(222, 30%, 18%)" />
-              <XAxis dataKey="name" stroke="hsl(215, 20%, 55%)" fontSize={12} />
-              <YAxis stroke="hsl(215, 20%, 55%)" fontSize={12} />
-              <Tooltip content={<CustomTooltip />} />
-              <Bar dataKey="deposits" fill="hsl(174, 72%, 50%)" radius={[4, 4, 0, 0]} name="Deposits" />
-              <Bar dataKey="withdrawals" fill="hsl(210, 80%, 55%)" radius={[4, 4, 0, 0]} name="Withdrawals" />
-            </BarChart>
-          </ResponsiveContainer>
-        </motion.div>
+  return (
+    <div className="space-y-4">
+      <h1 className="text-2xl font-bold">Admin Dashboard</h1>
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+        <div className="glass-card p-3">Users: {s.totalUsers || 0}</div>
+        <div className="glass-card p-3">Pending Deposits: {s.pendingDeposits || 0}</div>
+        <div className="glass-card p-3">Pending Withdrawals: {s.pendingWithdrawals || 0}</div>
+        <div className="glass-card p-3">Approved Deposits: ${Number(s.approvedDepositsAmount || 0).toFixed(2)}</div>
+        <div className="glass-card p-3">Paid Withdrawals: ${Number(s.paidWithdrawalsAmount || 0).toFixed(2)}</div>
       </div>
-
-      {/* User Growth + Recent Transactions */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }} className="glass-card p-5">
-          <h3 className="text-sm font-semibold text-foreground mb-4">User Growth</h3>
-          <ResponsiveContainer width="100%" height={220}>
-            <LineChart data={userGrowthData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="hsl(222, 30%, 18%)" />
-              <XAxis dataKey="name" stroke="hsl(215, 20%, 55%)" fontSize={12} />
-              <YAxis stroke="hsl(215, 20%, 55%)" fontSize={12} />
-              <Tooltip content={<CustomTooltip />} />
-              <Line type="monotone" dataKey="users" stroke="hsl(152, 60%, 45%)" strokeWidth={2} dot={{ fill: "hsl(152, 60%, 45%)", r: 4 }} name="Users" />
-            </LineChart>
-          </ResponsiveContainer>
-        </motion.div>
-
-        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.45 }} className="glass-card p-5 lg:col-span-2">
-          <h3 className="text-sm font-semibold text-foreground mb-4">Recent Transactions</h3>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="text-muted-foreground border-b border-border">
-                  <th className="text-left py-2 font-medium">ID</th>
-                  <th className="text-left py-2 font-medium">User</th>
-                  <th className="text-left py-2 font-medium">Type</th>
-                  <th className="text-left py-2 font-medium">Amount</th>
-                  <th className="text-left py-2 font-medium">Status</th>
-                  <th className="text-left py-2 font-medium">Time</th>
-                </tr>
-              </thead>
-              <tbody>
-                {recentTransactions.map((tx) => (
-                  <tr key={tx.id} className="border-b border-border/50 hover:bg-secondary/30 transition-colors">
-                    <td className="py-2.5 font-mono text-xs text-muted-foreground">{tx.id}</td>
-                    <td className="py-2.5 text-foreground">{tx.user}</td>
-                    <td className="py-2.5">
-                      <span className={`text-xs font-medium ${tx.type === "Deposit" ? "text-success" : "text-info"}`}>
-                        {tx.type}
-                      </span>
-                    </td>
-                    <td className="py-2.5 text-foreground font-medium">{tx.amount}</td>
-                    <td className="py-2.5">
-                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                        tx.status === "Approved" ? "bg-success/10 text-success" :
-                        tx.status === "Pending" ? "bg-warning/10 text-warning" :
-                        "bg-destructive/10 text-destructive"
-                      }`}>
-                        {tx.status}
-                      </span>
-                    </td>
-                    <td className="py-2.5 text-muted-foreground text-xs">{tx.time}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </motion.div>
+      <div className="glass-card p-4">
+        <h3 className="font-semibold mb-2">Recent Transactions</h3>
+        {(data.recentTransactions || []).map((t: any) => (
+          <div key={t._id} className="text-sm border-b border-border/30 py-1">{t.user?.name || 'User'} - {t.type} - ${Number(t.amount).toFixed(2)}</div>
+        ))}
       </div>
     </div>
   );
