@@ -1,143 +1,66 @@
 const InvestmentPlan = require("../models/Investmentplan");
+const asyncHandler = require("../utils/asyncHandler");
+const AppError = require("../utils/AppError");
+const { ok, created } = require("../utils/apiResponse");
 
-// ADMIN: Create plan
-// POST /api/admin/plans
-const createPlan = async (req, res) => {
+const createPlan = asyncHandler(async (req, res) => {
   const { name, min, max, dailyProfit, duration, capitalReturn = true, active = true } = req.body;
-
-  // Unique name check (case-insensitive style)
-  const exists = await InvestmentPlan.findOne({ name: name.trim() });
-  if (exists) {
-    return res.status(409).json({ success: false, message: "Plan name already exists" });
-  }
+  if (await InvestmentPlan.findOne({ name: String(name).trim() })) throw new AppError("Plan name already exists", 409);
 
   const plan = await InvestmentPlan.create({
-    name: name.trim(),
-    min,
-    max,
-    dailyProfit,
-    duration,
+    name: String(name).trim(),
+    min: Number(min),
+    max: Number(max),
+    dailyProfit: Number(dailyProfit),
+    duration: Number(duration),
     capitalReturn,
     active,
-    createdBy: req.user?._id || null,
-    updatedBy: req.user?._id || null,
+    createdBy: req.user._id,
+    updatedBy: req.user._id,
   });
 
-  return res.status(201).json({
-    success: true,
-    message: "Plan created successfully",
-    data: { plan },
-  });
-};
+  return created(res, "Plan created successfully", { plan });
+});
 
-// ADMIN: List plans (optional filters)
-// GET /api/admin/plans?active=true
-const listPlansAdmin = async (req, res) => {
-  const filter = {};
-  if (req.query.active !== undefined) {
-    filter.active = req.query.active === "true";
-  }
-
+const listPlansAdmin = asyncHandler(async (req, res) => {
+  const filter = req.query.active !== undefined ? { active: req.query.active === "true" } : {};
   const plans = await InvestmentPlan.find(filter).sort({ createdAt: -1 });
+  return ok(res, "Plans fetched", { plans });
+});
 
-  return res.json({
-    success: true,
-    message: "Plans fetched successfully",
-    data: { plans },
-  });
-};
-
-// PUBLIC/USER: List only active plans
-// GET /api/plans
-const listActivePlansPublic = async (req, res) => {
+const listActivePlansPublic = asyncHandler(async (req, res) => {
   const plans = await InvestmentPlan.find({ active: true }).sort({ min: 1 });
+  return ok(res, "Active plans fetched", { plans });
+});
 
-  return res.json({
-    success: true,
-    message: "Active plans fetched successfully",
-    data: { plans },
-  });
-};
-
-// ADMIN: Get single plan
-// GET /api/admin/plans/:id
-const getPlanById = async (req, res) => {
+const getPlanById = asyncHandler(async (req, res) => {
   const plan = await InvestmentPlan.findById(req.params.id);
-  if (!plan) return res.status(404).json({ success: false, message: "Plan not found" });
+  if (!plan) throw new AppError("Plan not found", 404);
+  return ok(res, "Plan fetched", { plan });
+});
 
-  return res.json({ success: true, message: "Plan fetched successfully", data: { plan } });
-};
-
-// ADMIN: Update plan
-// PUT /api/admin/plans/:id
-const updatePlan = async (req, res) => {
-  const { name, min, max, dailyProfit, duration, capitalReturn, active } = req.body;
-
+const updatePlan = asyncHandler(async (req, res) => {
   const plan = await InvestmentPlan.findById(req.params.id);
-  if (!plan) return res.status(404).json({ success: false, message: "Plan not found" });
-
-  // If name changed, ensure unique
-  if (name !== undefined && name.trim() !== plan.name) {
-    const exists = await InvestmentPlan.findOne({ name: name.trim() });
-    if (exists) return res.status(409).json({ success: false, message: "Plan name already exists" });
-    plan.name = name.trim();
-  }
-
-  if (min !== undefined) plan.min = min;
-  if (max !== undefined) plan.max = max;
-  if (dailyProfit !== undefined) plan.dailyProfit = dailyProfit;
-  if (duration !== undefined) plan.duration = duration;
-  if (capitalReturn !== undefined) plan.capitalReturn = capitalReturn;
-  if (active !== undefined) plan.active = active;
-
-  plan.updatedBy = req.user?._id || null;
-
+  if (!plan) throw new AppError("Plan not found", 404);
+  Object.assign(plan, req.body, { updatedBy: req.user._id });
   await plan.save();
+  return ok(res, "Plan updated", { plan });
+});
 
-  return res.json({
-    success: true,
-    message: "Plan updated successfully",
-    data: { plan },
-  });
-};
-
-// ADMIN: Toggle active (quick switch like your UI)
-// PATCH /api/admin/plans/:id/toggle
-const togglePlanActive = async (req, res) => {
+const togglePlanActive = asyncHandler(async (req, res) => {
   const plan = await InvestmentPlan.findById(req.params.id);
-  if (!plan) return res.status(404).json({ success: false, message: "Plan not found" });
-
+  if (!plan) throw new AppError("Plan not found", 404);
   plan.active = !plan.active;
-  plan.updatedBy = req.user?._id || null;
+  plan.updatedBy = req.user._id;
   await plan.save();
+  return ok(res, "Plan toggled", { plan });
+});
 
-  return res.json({
-    success: true,
-    message: `Plan ${plan.active ? "activated" : "deactivated"} successfully`,
-    data: { plan },
-  });
-};
-
-// ADMIN: Delete plan
-// DELETE /api/admin/plans/:id
-const deletePlan = async (req, res) => {
+const deletePlan = asyncHandler(async (req, res) => {
   const plan = await InvestmentPlan.findById(req.params.id);
-  if (!plan) return res.status(404).json({ success: false, message: "Plan not found" });
-
+  if (!plan) throw new AppError("Plan not found", 404);
   await plan.deleteOne();
+  return ok(res, "Plan deleted", null);
+});
 
-  return res.json({
-    success: true,
-    message: "Plan deleted successfully",
-  });
-};
-
-module.exports = {
-  createPlan,
-  listPlansAdmin,
-  listActivePlansPublic,
-  getPlanById,
-  updatePlan,
-  togglePlanActive,
-  deletePlan,
-};
+module.exports = { createPlan, listPlansAdmin, listActivePlansPublic, getPlanById, updatePlan, togglePlanActive, deletePlan };

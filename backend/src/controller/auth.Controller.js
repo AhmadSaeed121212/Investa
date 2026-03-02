@@ -1,111 +1,60 @@
 const jwt = require("jsonwebtoken");
 const User = require("../models/User");
+const asyncHandler = require("../utils/asyncHandler");
+const AppError = require("../utils/AppError");
+const { created, ok } = require("../utils/apiResponse");
 
-const signToken = (userId) => {
-  return jwt.sign({ id: userId }, process.env.JWT_SECRET, {
-    expiresIn: process.env.JWT_EXPIRES_IN || "7d",
-  });
-};
+const signToken = (id) => jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: process.env.JWT_EXPIRES_IN || "7d" });
 
-// POST /api/auth/register
-const register = async (req, res) => {
-  const { name, email, phone, password, confirmPassword, role } = req.body;
-  let referralCode;
-  if (!name || !email || !phone || !password || !confirmPassword || !role) {
-    return res.status(400).json({ success: false, message: "All fields are required" });
-  }
-  if (password !== confirmPassword) {
-    return res.status(400).json({ success: false, message: "Passwords do not match" });
-  }
-
-  if(!role || role === null || role === undefined || role === "undefined"){
-    role === "user";
-  }
+const register = asyncHandler(async (req, res) => {
+  const { name, email, phone, password, role = "user", referralCode } = req.body;
 
   const exists = await User.findOne({ email: email.toLowerCase() });
-  if (exists) return res.status(409).json({ success: false, message: "Email already registered" });
+  if (exists) throw new AppError("Email already registered", 409);
 
-  // referral linking (basic: store referredBy if referralCode exists)
-  let referredByUser = null;
+  let referredBy = null;
   if (referralCode) {
-    referredByUser = await User.findOne({ referralCode: referralCode.trim() });
-    console.log("cbbbb=====",referredByUser)
-    // if invalid code, ignore (or return error—your choice)
+    const referrer = await User.findOne({ referralCode: referralCode.trim() });
+    if (!referrer) throw new AppError("Invalid referral code", 400);
+    referredBy = referrer._id;
   }
 
-  // Create user
-  const user = await User.create({
-    name,
-    email,
-    phone,
-    password,
-    role,
-    referredBy: referredByUser ? referredByUser._id : null,
-  });
-
-  // Create a simple referral code based on _id (unique + short)
+  const user = await User.create({ name, email, phone, password, role, referredBy });
   user.referralCode = `INV-${String(user._id).slice(-6).toUpperCase()}`;
   await user.save();
 
-  const token = signToken(user._id);
-
-  return res.status(201).json({
-    success: true,
-    message: "Registered successfully",
-    data: {
-      token,
-      user: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        phone: user.phone,
-        role: user.role,
-        balance: user.balance,
-        referralCode: user.referralCode,
-      },
-    },
+  return created(res, "Registered successfully", {
+    token: signToken(user._id),
+    user,
   });
-};
+});
 
-// POST /api/auth/login
-const login = async (req, res) => {
+const login = asyncHandler(async (req, res) => {
   const { email, password } = req.body;
-  if (!email || !password) return res.status(400).json({ success: false, message: "Email and password required" });
-
   const user = await User.findOne({ email: email.toLowerCase() }).select("+password");
-  if (!user) return res.status(401).json({ success: false, message: "Invalid credentials" });
+  if (!user) throw new AppError("Invalid credentials", 401);
+  if (user.isBlocked) throw new AppError("Account is blocked", 403);
 
-  if (user.isBlocked) return res.status(403).json({ success: false, message: "Account is blocked" });
-
-  const ok = await user.comparePassword(password);
-  if (!ok) return res.status(401).json({ success: false, message: "Invalid credentials" });
+  const match = await user.comparePassword(password);
+  if (!match) throw new AppError("Invalid credentials", 401);
 
   user.lastLoginAt = new Date();
   await user.save();
 
-  const token = signToken(user._id);
-
-  return res.json({
-    success: true,
-    message: "Login successful",
-    data: {
-      token,
-      user: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        phone: user.phone,
-        role: user.role,
-        balance: user.balance,
-        referralCode: user.referralCode,
-      },
+  return ok(res, "Login successful", {
+    token: signToken(user._id),
+    user: {
+      id: user._id,
+      name: user.name,
+      email: user.email,
+      phone: user.phone,
+      role: user.role,
+      walletBalance: user.walletBalance,
+      referralCode: user.referralCode,
     },
   });
-};
+});
 
-// GET /api/auth/me
-const me = async (req, res) => {
-  return res.json({ success: true, message: "Profile", data: { user: req.user } });
-};
+const me = asyncHandler(async (req, res) => ok(res, "Profile fetched", { user: req.user }));
 
 module.exports = { register, login, me };

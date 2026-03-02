@@ -21,6 +21,7 @@ const Sidebar = () => {
 
   const handleLogout = () => {
     localStorage.removeItem('isAuthenticated');
+    localStorage.removeItem('token');
     window.location.href = '/';
   };
 

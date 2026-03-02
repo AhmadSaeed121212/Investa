@@ -14,6 +14,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use(cors());
 app.use(helmet());
 app.use(morgan("dev"));
+app.use("/uploads", express.static("uploads"));
 
 app.use(
   rateLimit({
@@ -24,8 +25,7 @@ app.use(
   })
 );
 
-app.get("/", (req, res) => res.json({ success: true, message: "API Running" }));
-
+app.get("/", (req, res) => res.json({ success: true, message: "API Running", data: null, errors: null }));
 app.use("/api", routes);
 
 app.use(notFound);

@@ -1,7 +1,8 @@
-const adminOnly = (req, res, next) => {
-  if (!req.user) return res.status(401).json({ success: false, message: "Not authorized" });
-  if (req.user.role !== "admin") return res.status(403).json({ success: false, message: "Admin only" });
+const AppError = require("../utils/AppError");
+
+const requireAdmin = (req, res, next) => {
+  if (!req.user || req.user.role !== "admin") throw new AppError("Admin access required", 403);
   next();
 };
 
-module.exports = { adminOnly };
+module.exports = { requireAdmin };
