@@ -64,7 +64,9 @@ export default function LoginPage() {
     
     try {
       const res = await api.login(email, password);
-      if (res.data.user.role !== "admin") throw new Error("Admin account required");
+      if (res.data?.user?.role !== "admin") {
+        throw new Error("Admin account required");
+      }
       login(res.data.token);
       toast.success("Login successful! Welcome to InvestMaster Admin Dashboard");
       navigate("/");

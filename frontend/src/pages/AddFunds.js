@@ -11,10 +11,91 @@ const AddFunds = () => {
   const [screenshot, setScreenshot] = useState(null);
   const [history, setHistory] = useState([]);
 
-  const load = async () => {
-    const [methods, deposits] = await Promise.all([api.paymentMethods(), api.myDeposits()]);
-    setPaymentMethods(methods.data.methods || []);
-    setHistory(deposits.data.deposits || []);
+  const [paymentMethods, setPaymentMethods] = useState([]);
+
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const [mRes, dRes] = await Promise.all([api.paymentMethods(), api.myDeposits()]);
+        const methods = (mRes.data.methods || []).map((m, i) => ({ id: m._id, name: m.name, icon: i % 2 ? 'fas fa-university' : 'fab fa-bitcoin', bgClass: i % 2 ? 'bg-bank' : 'bg-crypto' }));
+        setPaymentMethods(methods);
+        const history = (dRes.data.deposits || []).map((d) => ({ amount: d.amountUSD, method: d.paymentMethodId?.name || '-', status: d.status === 'PENDING' ? 'Pending' : d.status === 'APPROVED' ? 'Completed' : 'Rejected', date: d.createdAt, transactionId: d.transactionId }));
+        setDepositHistory(history);
+      } catch {}
+    };
+    load();
+  }, []);
+
+  useEffect(() => {
+    // Generate new reference number when method/amount changes
+    if (selectedMethod && amount) {
+      const randomRef = 'TXN' + Math.floor(100000 + Math.random() * 900000);
+      setReferenceNumber(randomRef);
+    }
+  }, [selectedMethod, amount]);
+
+  const handleMethodSelect = (method) => {
+    if (!amount || parseFloat(amount) <= 0) {
+      alert('Please enter a valid deposit amount first.');
+      return;
+    }
+    setSelectedMethod(method);
+    setShowQRBlock(true);
+    
+
+  };
+
+  const handleAmountChange = (e) => {
+    setAmount(e.target.value);
+    if (!e.target.value) {
+      setShowQRBlock(false);
+      setSelectedMethod('');
+    }
+  };
+
+  const copyReference = () => {
+    navigator.clipboard.writeText(referenceNumber);
+    alert('Reference number copied to clipboard!');
+  };
+
+  const handleCompleteDeposit = async () => {
+    if (!transactionId.trim()) {
+      alert('Please enter your transaction ID');
+      return;
+    }
+
+    if (!screenshot) {
+      alert('Please upload your payment screenshot');
+      return;
+    }
+
+    try {
+      const form = new FormData();
+      form.append('amountUSD', amount);
+      form.append('paymentMethodId', selectedMethod);
+      form.append('transactionId', transactionId.trim());
+      form.append('screenshot', screenshot);
+      await api.createDeposit(form);
+      const dRes = await api.myDeposits();
+      const history = (dRes.data.deposits || []).map((d) => ({ amount: d.amountUSD, method: d.paymentMethodId?.name || '-', status: d.status === 'PENDING' ? 'Pending' : d.status === 'APPROVED' ? 'Completed' : 'Rejected', date: d.createdAt, transactionId: d.transactionId }));
+      setDepositHistory(history);
+      setAmount('');
+      setSelectedMethod('');
+      setShowQRBlock(false);
+      setTransactionId('');
+      setScreenshot(null);
+      alert('Deposit submitted successfully!');
+    } catch (e) {
+      alert(e.message);
+    }
+  };
+
+  const filterHistory = (history) => {
+    if (historyFilter === 'all') return history;
+    const days = parseInt(historyFilter);
+    const cutoffDate = new Date();
+    cutoffDate.setDate(cutoffDate.getDate() - days);
+    return history.filter(deposit => new Date(deposit.date) >= cutoffDate);
   };
 
   useEffect(() => { load().catch(console.error); }, []);

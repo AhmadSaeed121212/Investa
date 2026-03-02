@@ -12,7 +12,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   useEffect(() => {
-    setIsAuthenticated(!!localStorage.getItem("adminToken"));
+    const authStatus = localStorage.getItem("isAuthenticated");
+    const token = localStorage.getItem("adminToken");
+    setIsAuthenticated(authStatus === "true" && !!token);
   }, []);
 
   const login = (token: string) => {
@@ -24,6 +26,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = () => {
     localStorage.removeItem("adminToken");
     localStorage.removeItem("isAuthenticated");
+    localStorage.removeItem("adminToken");
     setIsAuthenticated(false);
   };
 

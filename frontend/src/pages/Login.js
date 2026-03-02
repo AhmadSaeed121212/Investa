@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { api } from '../api';
 import { useNavigate } from 'react-router-dom';
+import { api } from '../api';
 import './Login.css';
 
 const Login = () => {
@@ -28,21 +29,12 @@ const Login = () => {
         const res = await api.login({ email: formData.email, password: formData.password });
         localStorage.setItem('token', res.data.token);
       } else {
-        const res = await api.register({
-          name: formData.name,
-          email: formData.email,
-          phone: formData.phone,
-          password: formData.password,
-          confirmPassword: formData.confirmPassword,
-          role: 'user',
-        });
+        const res = await api.register({ name: formData.name, email: formData.email, phone: formData.phone, password: formData.password, confirmPassword: formData.confirmPassword, role: 'user' });
         localStorage.setItem('token', res.data.token);
       }
       localStorage.setItem('isAuthenticated', 'true');
       navigate('/dashboard');
-    } catch (err) {
-      alert(err.message);
-    }
+    } catch (err) { alert(err.message); }
   };
 
   return (
