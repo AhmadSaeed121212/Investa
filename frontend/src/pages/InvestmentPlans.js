@@ -1,105 +1,34 @@
-import React from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useEffect, useState } from 'react';
 import Layout from '../components/Layout';
+import { api } from '../api';
 import './InvestmentPlans.css';
 
 const InvestmentPlans = () => {
-  const navigate = useNavigate();
+  const [plans, setPlans] = useState([]);
+  const [amountByPlan, setAmountByPlan] = useState({});
 
-  const plans = [
-    {
-      name: 'Lithium',
-      description: 'Earn through lithium mining',
-      icon: 'fas fa-battery-full',
-      min: 2,
-      max: 100000,
-      roiDaily: '3/3.5%',
-      roiHourly: '0.125%'
-    },
-    {
-      name: 'Gold',
-      description: 'Earn through gold trading',
-      icon: 'fas fa-gem',
-      min: 100,
-      max: 50000,
-      roiDaily: '2.5/3%',
-      roiHourly: '0.104%'
-    },
-    {
-      name: 'Platinum',
-      description: 'Premium AI trading bot',
-      icon: 'fas fa-crown',
-      min: 500,
-      max: 100000,
-      roiDaily: '4/4.5%',
-      roiHourly: '0.167%'
-    },
-    {
-      name: 'Diamond',
-      description: 'Elite trading strategies',
-      icon: 'fas fa-gem',
-      min: 1000,
-      max: 500000,
-      roiDaily: '5/5.5%',
-      roiHourly: '0.208%'
-    }
-  ];
+  useEffect(() => { api.plans().then((r)=>setPlans(r.data.plans || [])).catch(console.error); }, []);
 
-  const handleStartInvesting = (planName) => {
-    alert(`Starting investment in ${planName} plan...`);
-    // Add your investment processing logic here
+  const invest = async (planId) => {
+    const amount = amountByPlan[planId];
+    if (!amount) return alert('Enter amount');
+    try {
+      await api.invest({ planId, amount: Number(amount) });
+      alert('Investment created');
+    } catch (e) { alert(e.message); }
   };
 
   return (
-    <Layout title="Plans">
+    <Layout title="Investment Plans">
       <div className="p-4">
-        {/* Header Section */}
-        <div className="mb-5">
-          <h2 className="text-white fw-bold mb-2">Investment Plans</h2>
-          <p className="text-gray">Choose your AI trading bot and start earning</p>
-        </div>
-
-        {/* Plans Grid */}
-        <div className="row g-4">
-          {plans.map((plan, index) => (
-            <div key={plan.name} className="col-12 mb-4">
-              <div className="plan-card" style={{animationDelay: `${index * 0.1}s`}}>
-                <div className="d-flex align-items-start mb-4">
-                  <div className="plan-icon me-4">
-                    <i className={plan.icon}></i>
-                  </div>
-                  <div>
-                    <h4 className="text-white fw-bold mb-2">{plan.name}</h4>
-                    <p className="text-gray mb-2">{plan.description}</p>
-                    <p className="text-success-custom mb-0">Principal Return Policy Will Be Returned</p>
-                  </div>
-                </div>
-            
-                <div className="d-flex align-items-center mb-2">
-                  <div>
-                    <p className="text-gray mb-1">Range</p>
-                    <p className="text-white fw-bold mb-0">
-                      ${plan.min} - ${plan.max.toLocaleString()} <span className="text-gray fw-normal">Min</span>
-                    </p>
-                  </div>
-                  <div className="plan-divider"></div>
-                  <div>
-                    <p className="text-white fw-bold mb-1">
-                      ROI {plan.roiDaily} <span className="text-gray fw-normal">Daily</span>
-                    </p>
-                    <p className="text-white mb-0">{plan.roiHourly} / Hourly</p>
-                  </div>
-                </div>
-                
-                <div className="d-flex justify-content-end">
-                  <button className="btn-start" onClick={() => handleStartInvesting(plan.name)}>
-                    Start Investing
-                  </button>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
+        {plans.map((p) => (
+          <div className="dashboard-card mb-3" key={p._id}>
+            <h5 className="text-white">{p.name}</h5>
+            <p className="text-gray">${p.min} - ${p.max} | {p.dailyProfit}% daily | {p.duration} days</p>
+            <input className="amount-input mb-2" placeholder="Amount" value={amountByPlan[p._id] || ''} onChange={(e)=>setAmountByPlan({...amountByPlan,[p._id]:e.target.value})} />
+            <button className="btn-deposit" onClick={()=>invest(p._id)}>Invest</button>
+          </div>
+        ))}
       </div>
     </Layout>
   );

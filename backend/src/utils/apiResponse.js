@@ -1,13 +1,15 @@
-const ok = (res, data = {}, message = "Success") => {
-  return res.status(200).json({ success: true, message, data });
+const sendResponse = (res, statusCode, success, message, data = null, errors = null) => {
+  return res.status(statusCode).json({
+    success,
+    message,
+    data,
+    errors,
+  });
 };
 
-const created = (res, data = {}, message = "Created") => {
-  return res.status(201).json({ success: true, message, data });
-};
+const ok = (res, message = "Success", data = null) => sendResponse(res, 200, true, message, data, null);
+const created = (res, message = "Created", data = null) => sendResponse(res, 201, true, message, data, null);
+const fail = (res, statusCode = 400, message = "Request failed", errors = null) =>
+  sendResponse(res, statusCode, false, message, null, errors);
 
-const fail = (res, status = 400, message = "Failed") => {
-  return res.status(status).json({ success: false, message });
-};
-
-module.exports = { ok, created, fail };
+module.exports = { sendResponse, ok, created, fail };

@@ -1,29 +1,20 @@
 const jwt = require("jsonwebtoken");
 const User = require("../models/User");
+const asyncHandler = require("../utils/asyncHandler");
+const AppError = require("../utils/AppError");
 
-const protect = async (req, res, next) => {
-  try {
-    const header = req.headers.authorization;
+const protect = asyncHandler(async (req, res, next) => {
+  const header = req.headers.authorization;
+  if (!header || !header.startsWith("Bearer ")) throw new AppError("Not authorized, missing token", 401);
 
-    if (!header || !header.startsWith("Bearer ")) {
-      return res.status(401).json({ success: false, message: "Not authorized, missing token" });
-    }
+  const token = header.split(" ")[1];
+  const decoded = jwt.verify(token, process.env.JWT_SECRET);
+  const user = await User.findById(decoded.id).select("-password");
+  if (!user) throw new AppError("User not found", 401);
+  if (user.isBlocked) throw new AppError("Account is blocked", 403);
 
-    const token = header.split(" ")[1];
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-
-    const user = await User.findById(decoded.id).select("-password");
-    if (!user) return res.status(401).json({ success: false, message: "Not authorized, user not found" });
-
-    if (user.isBlocked) {
-      return res.status(403).json({ success: false, message: "Account is blocked" });
-    }
-
-    req.user = user;
-    next();
-  } catch (err) {
-    return res.status(401).json({ success: false, message: "Not authorized, token invalid" });
-  }
-};
+  req.user = user;
+  next();
+});
 
 module.exports = { protect };

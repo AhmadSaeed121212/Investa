@@ -1,14 +1,16 @@
-const notFound = (req, res) => {
-  res.status(404).json({ success: false, message: "Route not found" });
-};
+const { fail } = require("../utils/apiResponse");
+
+const notFound = (req, res) => fail(res, 404, `Route ${req.originalUrl} not found`, { path: req.originalUrl });
 
 const errorHandler = (err, req, res, next) => {
-  console.error(err);
-  const status = err.statusCode || 500;
-  res.status(status).json({
-    success: false,
-    message: err.message || "Server error",
-  });
+  const statusCode = err.statusCode || 500;
+  const message = err.message || "Internal server error";
+
+  if (statusCode >= 500) {
+    console.error("[ERROR]", err);
+  }
+
+  return fail(res, statusCode, message, err.errors || null);
 };
 
 module.exports = { notFound, errorHandler };

@@ -1,10 +1,9 @@
 const express = require("express");
 const router = express.Router();
-
 const { protect } = require("../middleware/auth.middleware");
-const { adminOnly } = require("../middleware/admin.middleware");
-const { validatePlanPayload } = require("../middleware/validate.middleware");
-
+const { requireAdmin } = require("../middleware/admin.middleware");
+const { validate } = require("../middleware/validate.middleware");
+const { planValidator } = require("../validators/plan.validator");
 const {
   createPlan,
   listPlansAdmin,
@@ -14,17 +13,12 @@ const {
   deletePlan,
 } = require("../controller/investmentPlan");
 
-// All admin plan routes are protected + admin-only
-router.use(protect, adminOnly);
-
+router.use(protect, requireAdmin);
+router.post("/", validate(planValidator), createPlan);
 router.get("/", listPlansAdmin);
-router.post("/", validatePlanPayload, createPlan);
-
 router.get("/:id", getPlanById);
-router.put("/:id", validatePlanPayload, updatePlan);
-
+router.put("/:id", validate(planValidator), updatePlan);
 router.patch("/:id/toggle", togglePlanActive);
-
 router.delete("/:id", deletePlan);
 
 module.exports = router;
